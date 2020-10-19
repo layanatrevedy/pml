@@ -1,0 +1,114 @@
+---
+title: "Predictions using the Weight Lifting Exercises Dataset"
+author: "Layana Trevedy"
+date: "19/10/2020"
+output: html_document
+---
+
+Background
+----------
+Using devices such as _Jawbone Up_, _Nike FuelBand_, and _Fitbit_ it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how _much_ of a particular activity they do, but they rarely quantify _how well they do it_. In this project, the goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+
+The goal of this project is to predict the manner in which they did the exercise. This is the `classe` variable in the training set, considering any of the other variables as predictors.
+
+<hr />
+
+Data Set
+--------
+The training data for this project are available here:
+[https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv)
+
+The test data are available here:
+[https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv)
+
+More information is available from the website here: [http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har](http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har) (see the section on the Weight Lifting Exercise Dataset).
+If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment.
+
+<hr />
+
+Submission
+-----------
+
+#### Loading Data set
+```{r}
+if(!file.exists("pml-training.csv"))
+{
+  download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", "pml-training.csv", method = 'curl')
+}
+dataset <- read.csv("pml-training.csv", na.strings = c("NA", ""))
+if(!file.exists("pml-testing.csv"))
+{
+  download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", "pml-testing.csv", method = 'curl')
+}
+val <- read.csv("pml-testing.csv")
+```
+
+#### Importing Libraries 
+```{r warning=FALSE, error=FALSE}
+library(caret)
+library(randomForest)
+```
+
+#### Setting Seed, so that analysis is reproducible
+```{r warning=FALSE, error=FALSE}
+set.seed(100)
+```
+
+#### Dividing the data set into 60/40 training & testing sets 
+```{r warning=FALSE, error=FALSE}
+inTrain = createDataPartition(y=dataset$classe, p=0.6, list=FALSE)
+train = dataset[inTrain,]
+test = dataset[-inTrain,]
+```
+
+#### Removing Null values 
+```{r warning=FALSE, error=FALSE}
+NullCols = sapply(train, function(x) {sum(is.na(x))}) 
+NullCols
+colsWithNull = names(NullCols[NullCols > 0])
+train = train[, !names(train) %in% colsWithNull] 
+names(train)
+train <- train[, !names(train) %in% c("X", "user_name", "raw_timestamp_part_1", "raw_timestamp_part_2", "cvtd_timestamp", "new_window", "num_window")]
+```
+
+#### Creating a Validation set 
+```{r warning=FALSE, error=FALSE}
+NullCols = sapply(val, function(x) {sum(is.na(x))})
+colsWithNull = names(NullCols[NullCols > 0])
+val= val[, !names(val) %in% colsWithNull]
+val <- val[, !names(val) %in% c("X", "user_name", "raw_timestamp_part_1", "raw_timestamp_part_2", "cvtd_timestamp", "new_window", "num_window")]
+```
+
+#### Creating a testing set 
+```{r warning=FALSE, error=FALSE}
+NullCols = sapply(test, function(x) {sum(is.na(x))})
+colsWithNull = names(NullCols[NullCols > 0])
+test = test[, !names(test) %in% colsWithNull]
+test <- test[, !names(test) %in% c("X", "user_name", "raw_timestamp_part_1", "raw_timestamp_part_2", "cvtd_timestamp", "new_window", "num_window")]
+```
+
+#### Creating model using Decision tree 
+```{r warning=FALSE, error=FALSE}
+modFitDT <- rpart(classe ~ ., data = train, method = "class")
+predictDT <- predict(modFitDT, test, type = "class")
+rpart.plot(modFitDT, main="Classification Tree", extra=102, under=TRUE, faclen=0, cex = 0.55)
+confusionMatrix(factor(predictDT), factor(test$classe))
+```
+
+#### Creating model using RandomForest 
+```{r warning=FALSE, error=FALSE}
+model <- randomForest(as.factor(classe) ~ .,   data=train, ntree = 100)
+pred <- predict(model, test)
+confusionMatrix(factor(pred), factor(test$classe))
+modelAcc <- confusionMatrix(factor(pred), factor(test$classe))$overall[[1]]
+```
+
+<hr />
+
+Conclusion
+----------
+
+We can conclude by saying that RandomForest gives more accurate results than Decision Tree. Hence, for this problem we use RandomForest to predict the manner in which the participants did the exercise. 
+
+<hr />
+<br>
